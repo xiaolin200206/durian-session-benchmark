@@ -1,0 +1,25 @@
+# Data (not public)
+data/
+*.jpg
+*.jpeg
+*.png
+*.bmp
+
+# Checkpoints (upload to Releases separately)
+checkpoints/
+*.pth
+
+# Results
+results/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+venv/
+.conda/
+
+# OS
+.DS_Store
+Thumbs.db
