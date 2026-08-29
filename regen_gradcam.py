@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Standalone Grad-CAM regeneration script.
-Fixes:
-  1. LFA target layer → use attention_conv inside LesionFocusAttention
-  2. Row 0 shows ORIGINAL photo (actual PIL image, not normalized tensor)
-  3. Row 1 ResNet-50 Grad-CAM
-  4. Row 2 LFA (Ours) Grad-CAM
-  5. Captions per column match actual disease class
+Standalone Grad-CAM visualisation.
+
+Produces a three-row figure for one sample image per class:
+  Row 0  Original photograph
+  Row 1  ResNet-50 Grad-CAM (baseline)
+  Row 2  Agri-EfficientNet LFA Grad-CAM (ours)
+
+For the LFA model the target layer is attention_conv inside
+LesionFocusAttention, so the map reflects what the attention module
+actually weights.
 Run: python regen_gradcam.py
 """
 

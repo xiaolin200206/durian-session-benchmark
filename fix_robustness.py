@@ -2,10 +2,13 @@
 """
 fix_robustness.py
 =================
-Re-runs ONLY the robustness analysis for ResNet-50 with debug output
-to verify perturbations are actually applied.
+Runs the robustness analysis on its own, without retraining anything.
 
-Saves corrected robustness_results.csv and fig_robustness.png.
+Applies five synthetic field perturbations to the test set and reports
+Macro F1 under each. Verbose output confirms each perturbation is
+actually applied to the input tensors.
+
+Writes robustness_results.csv and fig_robustness.png.
 
 Run: python fix_robustness.py
 """

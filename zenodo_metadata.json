@@ -1,0 +1,22 @@
+{
+  "title": "Durian disease field dataset from Peninsular Malaysia, with capture-session identifiers",
+  "upload_type": "dataset",
+  "description": "<p>560 field photographs of five durian disease categories, collected from commercial orchards across Peninsular Malaysia between July 2025 and June 2026, with per-image <strong>capture-session identifiers</strong>.</p><p>The session identifiers are the point of this release. The 560 images arise from only 73 independent capture episodes, because a symptomatic leaf is typically photographed several times in a few seconds. Splitting at image level puts near-identical views of one specimen on both sides of a train/test boundary; in our own initial partition, 79.6% of images fell in sessions that straddled a split. Group your partitions by the <code>session</code> column in sessions.csv.</p><p>Contents: full-resolution originals under class folders; sessions.csv mapping each (class, filename) to a session; the exact session-level 80/10/10 partition used in the paper; and the 512 px training copies. Code, audit scripts and the evaluation protocol are in the accompanying repository.</p><p>Classes: Algal Leaf Spot (Cephaleuros virescens), Leaf Rot (Colletotrichum spp.), Phomopsis Fruit and Stem Blight (Phomopsis durionis), Pink Disease (Erythricium salmonicolor), Root Disease (Phytophthora spp.). Pink Disease is represented by three capture sessions across the entire collection period and its per-class metrics are not interpretable at that support.</p>",
+  "creators": [
+    {"name": "〔Surname, Given names〕", "affiliation": "〔institution〕", "orcid": "〔ORCID〕"}
+  ],
+  "keywords": [
+    "durian", "plant disease", "crop disease classification", "field dataset",
+    "data leakage", "capture session", "grouped cross-validation",
+    "cross-country generalization", "Malaysia", "deep learning"
+  ],
+  "license": "cc-by-4.0",
+  "access_right": "open",
+  "language": "eng",
+  "version": "1.0.0",
+  "related_identifiers": [
+    {"relation": "isSupplementTo", "identifier": "〔paper DOI or arXiv id once available〕", "resource_type": "publication-article"},
+    {"relation": "isSupplementedBy", "identifier": "〔GitHub URL〕", "resource_type": "software"}
+  ],
+  "notes": "Group partitions by the session column. Image-level random splits inflate macro F1 by 11.8 points on average across nine architectures on this data, and reverse the ranking of attention modules."
+}

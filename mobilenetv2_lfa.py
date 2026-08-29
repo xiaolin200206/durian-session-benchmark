@@ -1,3 +1,17 @@
+"""
+NOT REPORTED IN THE PAPER.
+
+This file tests whether LFA transfers to a MobileNetV2 backbone. It was written
+before the session-level rerun and its results were produced under the
+image-level split, so they are not comparable with anything in the manuscript
+and are not cited by it.
+
+It is kept here because deleting code that was run would misrepresent what was
+done, but do not read its output as a result. If you want the comparison, rerun
+it against clean_split with several seeds, and expect the same finding as the
+EfficientNet ablation: no benefit that survives grouped evaluation.
+"""
+
 # -*- coding: utf-8 -*-
 """
 mobilenetv2_lfa.py
@@ -6,7 +20,8 @@ Trains MobileNetV2 + LFA and MobileNetV2 (no LFA) and adds them to:
   - comparison_table.csv  (extended)
   - robustness_results.csv (extended, IF fix_robustness.py already run)
 
-This resolves the reviewer concern: "why not apply LFA to MobileNetV2?"
+Supplementary experiment: tests whether LFA generalises to a backbone
+other than EfficientNet-B0.
 
 Run AFTER fix_robustness.py.
 Run: python mobilenetv2_lfa.py

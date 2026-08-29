@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this dataset or code, please cite the paper and group your splits by the session column."
+title: "What a Reported Accuracy Measures: durian disease classification benchmark"
+authors:
+  - family-names: "〔surname〕"
+    given-names: "〔given names〕"
+version: "1.0.0"
+date-released: "〔YYYY-MM-DD〕"
+license: MIT              # code
+# The dataset is released separately on Zenodo under CC-BY-4.0.
+# See the Zenodo record for the dataset licence and DOI.
+repository-code: "〔GitHub URL〕"

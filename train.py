@@ -5,7 +5,6 @@ Agri-EfficientNet: Durian Disease Classification
 Paper  : Agri-EfficientNet: A Lightweight Lesion Focus Attention Framework
          for Durian Disease Diagnosis Under Malaysian Field Conditions
          with Cross-Country Generalization Assessment
-Journal: Engineering Applications of Artificial Intelligence (under review)
 
 Pipeline:
   Step 1  — Dataset split (80/10/10, seed=42)
@@ -26,7 +25,7 @@ Usage:
 
 Dataset:
   Malaysia dataset is not publicly available (commercial confidentiality).
-  To request access, contact the corresponding author via EAAI submission system.
+  To request access, open an issue on the repository or contact the maintainers.
   Vietnam dataset: Nguyen et al. (2025), Data in Brief.
 
 Requirements:
@@ -68,7 +67,10 @@ from sklearn.metrics import (
     classification_report, confusion_matrix,
     accuracy_score, f1_score, precision_score, recall_score
 )
-from sklearn.model_selection import StratifiedKFold
+from session_utils import (
+    load_sessions, do_split_grouped, build_cv_index,
+    max_usable_k, cv_folds, describe_folds,
+)
 from statsmodels.stats.contingency_tables import mcnemar
 
 print(f'PyTorch    : {torch.__version__}')
@@ -98,6 +100,16 @@ parser.add_argument('--retrain',       action='store_true', default=False,
                     help='Force retraining even if checkpoints exist')
 parser.add_argument('--seed',          type=int, default=42,
                     help='Random seed for reproducibility')
+parser.add_argument('--sessions',      type=str, default='sessions.csv',
+                    help='Session map produced by session_split.py')
+parser.add_argument('--cv_mode',       type=str, default='group',
+                    choices=['group','image'],
+                    help="Cross-validation split rule. 'group' keeps a capture "
+                         "session whole; 'image' is the control condition.")
+parser.add_argument('--no_latency',    action='store_true',
+                    help='Skip single-thread CPU latency profiling')
+parser.add_argument('--dry_run',       action='store_true',
+                    help='2 epochs per stage, to time the run before committing')
 args = parser.parse_args()
 
 MY_DATA   = Path(args.malaysia_data)
@@ -107,6 +119,11 @@ SAVE_DIR  = Path(args.save_dir)
 CKPT_DIR  = Path(args.ckpt_dir)
 RETRAIN   = args.retrain
 SEED      = args.seed
+SESSIONS  = load_sessions(args.sessions)
+CV_MODE   = args.cv_mode
+NO_LAT    = args.no_latency
+DRY       = args.dry_run
+S1, S2    = (2, 2) if DRY else (15, 15)
 
 for d in [SAVE_DIR, CKPT_DIR, SPLIT_DIR]:
     d.mkdir(parents=True, exist_ok=True)
@@ -115,7 +132,7 @@ if not MY_DATA.exists():
     raise FileNotFoundError(
         f"Malaysia data not found at: {MY_DATA}\n"
         "Please download the dataset and specify --malaysia_data <path>\n"
-        "To request access: contact the corresponding author via the journal submission system."
+        "To request access: open an issue on the repository or contact the maintainers."
     )
 if not VN_DATA.exists():
     raise FileNotFoundError(
@@ -191,43 +208,12 @@ def count_imgs(folder):
 # =============================================================================
 # 2. SPLIT MALAYSIA DATA (80/10/10)
 # =============================================================================
-def do_split(src, dst, ratios=(0.8, 0.1, 0.1), seed=42):
-    if dst.exists():
-        print(f'Split exists at {dst}, skipping.')
-        return
-    random.seed(SEED)
-    for cls_dir in sorted(src.iterdir()):
-        if not cls_dir.is_dir(): continue
-        cls = FOLDER_RENAME.get(cls_dir.name, cls_dir.name)
-        imgs = [f for f in cls_dir.rglob('*') if f.suffix.lower() in IMG_EXT]
-        random.shuffle(imgs)
-        n = len(imgs)
-
-        # For very small classes (< 10), guarantee at least 1 in val and test
-        if n < 10:
-            n_te = max(1, int(n * ratios[2]))
-            n_va = max(1, int(n * ratios[1]))
-            n_tr = max(1, n - n_va - n_te)
-            # Make sure total adds up
-            if n_tr + n_va + n_te > n:
-                n_tr = n - n_va - n_te
-        else:
-            n_tr = int(n * ratios[0])
-            n_va = int(n * ratios[1])
-            n_te = n - n_tr - n_va
-
-        cuts = [0, n_tr, n_tr + n_va, n]
-        for split, (a, b) in zip(['train','val','test'], zip(cuts, cuts[1:])):
-            out = dst / split / cls
-            out.mkdir(parents=True, exist_ok=True)
-            for f in imgs[a:b]:
-                shutil.copy2(f, out / f.name)
-        print(f'  {cls:<25}: total={n} train={n_tr} val={n_va} test={n_te}')
-
 print('\n' + '='*60)
-print('STEP 1: Split Malaysia dataset (80/10/10)')
+print('STEP 1: Split Malaysia dataset (80/10/10, grouped by capture session)')
 print('='*60)
-do_split(MY_DATA, SPLIT_DIR)
+do_split_grouped(MY_DATA, SPLIT_DIR, SESSIONS,
+                 ratios=(0.8, 0.1, 0.1), seed=SEED,
+                 folder_rename=FOLDER_RENAME)
 
 # =============================================================================
 # 3. DATASET STATISTICS
@@ -491,7 +477,9 @@ def evaluate(model, loader, criterion):
         total   += X.size(0)
     return tl/total, correct/total
 
-def two_stage_train(model, save_path, s1=15, s2=15, hlr=1e-3, blr=1e-5):
+def two_stage_train(model, save_path, s1=None, s2=None, hlr=1e-3, blr=1e-5):
+    s1 = S1 if s1 is None else s1
+    s2 = S2 if s2 is None else s2
     crit    = nn.CrossEntropyLoss(weight=class_weights)
     history = {'train_loss':[],'val_loss':[],'train_acc':[],'val_acc':[]}
     best_va, best_st = 0.0, None
@@ -539,6 +527,8 @@ def calc_metrics(yt, yp):
     }
 
 def cpu_ms(model, reps=100, warmup=10):
+    if NO_LAT:
+        return float('nan')
     m = model.cpu().eval()
     d = torch.randn(1,3,224,224)
     with torch.no_grad():
@@ -1122,17 +1112,25 @@ print(f'Disease classes for CV: {DISEASE_CLASSES}')
 disease_idx_map = [class_names.index(c) for c in DISEASE_CLASSES if c in class_names]
 
 # Use all Malaysia images (train+val+test combined) for CV
-all_disease_samples = []
-for split in ['train','val','test']:
-    for cls in DISEASE_CLASSES:
-        cls_dir = SPLIT_DIR / split / cls
-        if not cls_dir.exists(): continue
-        label = class_names.index(cls)
-        for f in cls_dir.rglob('*'):
-            if f.suffix.lower() in IMG_EXT:
-                all_disease_samples.append((str(f), label))
+all_disease_samples, all_labels_cv, all_groups_cv = build_cv_index(
+    SPLIT_DIR, list(class_names), SESSIONS)
 
 print(f'Total disease images for CV: {len(all_disease_samples)}')
+print(f'Distinct capture sessions  : {len(set(all_groups_cv))}')
+
+k, sess_per_class = max_usable_k(all_labels_cv, all_groups_cv, k_wanted=5)
+print('\n  sessions per class:')
+for lab, n in sorted(sess_per_class.items()):
+    print(f'    {class_names[lab]:<22}: {n}')
+if k < 5:
+    rare = min(sess_per_class, key=sess_per_class.get)
+    print(f'\n  !! k reduced to {k}: "{class_names[rare]}" has only '
+          f'{sess_per_class[rare]} sessions.')
+    print('     Report this in the paper rather than forcing k=5.')
+
+describe_folds(all_labels_cv, all_groups_cv, list(class_names), k,
+               seed=SEED, mode=CV_MODE)
+
 
 class SimpleDataset(Dataset):
     def __init__(self, samples, transform):
@@ -1144,77 +1142,102 @@ class SimpleDataset(Dataset):
         img = Image.open(path).convert('RGB')
         return self.transform(img), label
 
-all_labels_cv = np.array([s[1] for s in all_disease_samples])
-min_cls_count  = min(Counter(all_labels_cv.tolist()).values())
-k = min(5, min_cls_count) if min_cls_count >= 2 else 2
-print(f'Using {k}-fold CV (min class size = {min_cls_count})')
 
-skf      = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
-cv_rows  = []
+cv_rows = []
 
-for fold, (tr_idx, te_idx) in enumerate(skf.split(all_disease_samples, all_labels_cv)):
+for fold, (tr_idx, va_idx, te_idx) in enumerate(
+        cv_folds(all_labels_cv, all_groups_cv, k=k, seed=SEED, mode=CV_MODE)):
+
     print(f'\n  Fold {fold+1}/{k}')
     tr_samp = [all_disease_samples[i] for i in tr_idx]
+    va_samp = [all_disease_samples[i] for i in va_idx]
     te_samp = [all_disease_samples[i] for i in te_idx]
 
-    # Re-map labels to 0..n for disease subset
-    unique_labels = sorted(set(s[1] for s in tr_samp))
-    lmap = {orig:new for new,orig in enumerate(unique_labels)}
-    tr_mapped = [(p, lmap[l]) for p,l in tr_samp]
-    te_mapped = [(p, lmap[l]) for p,l in te_samp]
-
+    # label remap must be built from ALL parts, not just train, or a class
+    # present only in test would shift every index
+    unique_labels = sorted(set(l for _, l in tr_samp + va_samp + te_samp))
+    lmap = {orig: new for new, orig in enumerate(unique_labels)}
+    tr_mapped = [(p, lmap[l]) for p, l in tr_samp]
+    va_mapped = [(p, lmap[l]) for p, l in va_samp]
+    te_mapped = [(p, lmap[l]) for p, l in te_samp]
     fold_n_cls = len(unique_labels)
+
     tr_ds = SimpleDataset(tr_mapped, train_tf)
+    va_ds = SimpleDataset(va_mapped, test_tf)
     te_ds = SimpleDataset(te_mapped, test_tf)
 
-    # Weighted sampler for fold
     fold_targets = [s[1] for s in tr_mapped]
-    fold_counts  = Counter(fold_targets)
+    fold_counts = Counter(fold_targets)
     fold_w = torch.tensor(
-        [len(fold_targets)/(fold_n_cls*fold_counts[i]) for i in range(fold_n_cls)],
-        dtype=torch.float).to(device)
+        [len(fold_targets)/(fold_n_cls*max(fold_counts[i], 1))
+         for i in range(fold_n_cls)], dtype=torch.float).to(device)
     fold_sw = [fold_w[t].item() for t in fold_targets]
     fold_sampler = WeightedRandomSampler(fold_sw, len(fold_sw), replacement=True)
 
-    fold_train_loader = DataLoader(tr_ds, batch_size=BATCH, sampler=fold_sampler, num_workers=NW)
-    fold_test_loader  = DataLoader(te_ds, batch_size=BATCH, shuffle=False, num_workers=NW)
+    fold_train_loader = DataLoader(tr_ds, batch_size=BATCH,
+                                   sampler=fold_sampler, num_workers=NW)
+    fold_val_loader   = DataLoader(va_ds, batch_size=BATCH,
+                                   shuffle=False, num_workers=NW)
+    fold_test_loader  = DataLoader(te_ds, batch_size=BATCH,
+                                   shuffle=False, num_workers=NW)
 
     fold_model = build_agri_efficientnet(fold_n_cls, attention='lfa').to(device)
     fold_crit  = nn.CrossEntropyLoss(weight=fold_w)
-    fold_best, fold_best_st = 0.0, None
 
-    # Quick 10+5 epoch training for CV
-    opt = torch.optim.Adam([p for p in fold_model.parameters() if p.requires_grad], lr=1e-3)
-    for ep in range(10):
-        fold_model.train()
-        for X,y in fold_train_loader:
-            X,y = X.to(device),y.to(device)
-            opt.zero_grad(); out=fold_model(X); loss=fold_crit(out,y)
-            loss.backward(); opt.step()
-        fold_model.eval()
+    def _val_acc(m):
+        m.eval(); correct = total = 0
         with torch.no_grad():
-            correct,total=0,0
-            for X,y in fold_test_loader:
-                X,y=X.to(device),y.to(device)
-                correct+=(fold_model(X).argmax(1)==y).sum().item(); total+=y.size(0)
-        va = correct/total
-        if va > fold_best: fold_best,fold_best_st = va,copy.deepcopy(fold_model.state_dict())
+            for X, y in fold_val_loader:
+                X, y = X.to(device), y.to(device)
+                correct += (m(X).argmax(1) == y).sum().item()
+                total += y.size(0)
+        return correct / max(total, 1)
 
-    fold_model.load_state_dict(fold_best_st)
-    for p in fold_model.parameters(): p.requires_grad=True
-    opt = torch.optim.Adam(fold_model.parameters(), lr=1e-5)
-    for ep in range(5):
+    # --- Stage 1: frozen backbone, select on INNER VAL -------------------
+    fold_best, fold_best_st = -1.0, None
+    opt = torch.optim.Adam(
+        [p for p in fold_model.parameters() if p.requires_grad], lr=1e-3)
+    for ep in range(2 if DRY else 10):
         fold_model.train()
-        for X,y in fold_train_loader:
-            X,y=X.to(device),y.to(device)
-            opt.zero_grad(); out=fold_model(X); loss=fold_crit(out,y)
+        for X, y in fold_train_loader:
+            X, y = X.to(device), y.to(device)
+            opt.zero_grad(); loss = fold_crit(fold_model(X), y)
             loss.backward(); opt.step()
+        va = _val_acc(fold_model)
+        if va > fold_best:
+            fold_best, fold_best_st = va, copy.deepcopy(fold_model.state_dict())
+    if fold_best_st is not None:
+        fold_model.load_state_dict(fold_best_st)
 
+    # --- Stage 2: full fine-tune, also selected on INNER VAL -------------
+    for p in fold_model.parameters():
+        p.requires_grad = True
+    opt = torch.optim.Adam(fold_model.parameters(), lr=1e-5)
+    stage2_best = _val_acc(fold_model)
+    stage2_best_st = copy.deepcopy(fold_model.state_dict())
+    for ep in range(2 if DRY else 5):
+        fold_model.train()
+        for X, y in fold_train_loader:
+            X, y = X.to(device), y.to(device)
+            opt.zero_grad(); loss = fold_crit(fold_model(X), y)
+            loss.backward(); opt.step()
+        va = _val_acc(fold_model)
+        if va > stage2_best:
+            stage2_best, stage2_best_st = va, copy.deepcopy(fold_model.state_dict())
+    fold_model.load_state_dict(stage2_best_st)
+
+    # --- evaluate ONCE on the untouched test fold ------------------------
     yt_f, yp_f = get_preds(fold_model, fold_test_loader)
-    acc = accuracy_score(yt_f, yp_f)*100
-    f1  = f1_score(yt_f, yp_f, average='macro', zero_division=0)*100
-    cv_rows.append({'Fold':fold+1,'Accuracy (%)':round(acc,2),'Macro F1 (%)':round(f1,2)})
-    print(f'    Fold {fold+1} => Acc={acc:.2f}% F1={f1:.2f}%')
+    acc = accuracy_score(yt_f, yp_f) * 100
+    f1  = f1_score(yt_f, yp_f, average='macro', zero_division=0) * 100
+    cv_rows.append({'Fold': fold+1, 'cv_mode': CV_MODE, 'seed': SEED,
+                    'Test images': len(te_idx),
+                    'Test sessions': len(set(all_groups_cv[te_idx])),
+                    'Accuracy (%)': round(acc, 2),
+                    'Macro F1 (%)': round(f1, 2)})
+    print(f'    Fold {fold+1} => Acc={acc:.2f}%  F1={f1:.2f}%  '
+          f'(inner-val acc {stage2_best:.3f})')
+
 
 df_cv = pd.DataFrame(cv_rows)
 mean_acc = df_cv['Accuracy (%)'].mean()
@@ -1225,7 +1248,7 @@ summary_row = {'Fold':'Mean±Std',
                'Accuracy (%)':f'{mean_acc:.2f}±{std_acc:.2f}',
                'Macro F1 (%)':f'{mean_f1:.2f}±{std_f1:.2f}'}
 df_cv = pd.concat([df_cv, pd.DataFrame([summary_row])], ignore_index=True)
-print('\n5-FOLD CV RESULTS (Disease subset):')
+print(f'\n{k}-FOLD GROUPED CV RESULTS (session-level, disease subset):')
 print(df_cv.to_string(index=False))
 df_cv.to_csv(SAVE_DIR/'cv_results.csv',index=False)
 
@@ -1237,7 +1260,9 @@ print('STEP 11: LFA Latency Overhead')
 print('='*60)
 
 lat_rows = []
-for name, att in ABLATION_CONFIGS:
+if NO_LAT:
+    print('  skipped (--no_latency)')
+for name, att in ([] if NO_LAT else ABLATION_CONFIGS):
     ckpt = CKPT_DIR / f'abl_{att}.pth'
     m = build_agri_efficientnet(num_classes, attention=att)
     if ckpt.exists(): m.load_state_dict(torch.load(str(ckpt),map_location='cpu'))
@@ -1247,11 +1272,12 @@ for name, att in ABLATION_CONFIGS:
     print(f'  {name:<40}: {ms} ms')
 
 df_lat = pd.DataFrame(lat_rows)
-base_ms = df_lat[df_lat.Model.str.contains('No Attention')]['CPU (ms)'].values[0]
-lfa_ms_ = df_lat[df_lat.Model.str.contains('LFA')]['CPU (ms)'].values[0]
-overhead = (lfa_ms_ - base_ms)/base_ms*100
-print(f'\nLFA overhead: +{lfa_ms_-base_ms:.2f}ms ({overhead:.1f}% over baseline)')
-df_lat.to_csv(SAVE_DIR/'latency_results.csv',index=False)
+if not NO_LAT:
+    base_ms = df_lat[df_lat.Model.str.contains('No Attention')]['CPU (ms)'].values[0]
+    lfa_ms_ = df_lat[df_lat.Model.str.contains('LFA')]['CPU (ms)'].values[0]
+    overhead = (lfa_ms_ - base_ms)/base_ms*100
+    print(f'\nLFA overhead: +{lfa_ms_-base_ms:.2f}ms ({overhead:.1f}% over baseline)')
+    df_lat.to_csv(SAVE_DIR/'latency_results.csv',index=False)
 
 # =============================================================================
 # 16. FINAL SUMMARY
