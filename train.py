@@ -2,9 +2,8 @@
 """
 Agri-EfficientNet: Durian Disease Classification
 ================================================
-Paper  : Agri-EfficientNet: A Lightweight Lesion Focus Attention Framework
-         for Durian Disease Diagnosis Under Malaysian Field Conditions
-         with Cross-Country Generalization Assessment
+Paper  : What a Reported Accuracy Measures: Capture-Session Leakage and
+         Cross-Country Transfer in Durian Disease Classification
 
 Pipeline:
   Step 1  — Dataset split (80/10/10, seed=42)
@@ -16,17 +15,25 @@ Pipeline:
   Step 7  — Grad-CAM visualization
   Step 8  — Robustness analysis (5 perturbation conditions)
   Step 9  — McNemar statistical significance tests
-  Step 10 — 5-fold cross-validation
+  Step 10 — Grouped cross-validation (k is reduced from 5 to 3 because
+            Pink_disease has only three capture sessions)
   Step 11 — LFA latency profiling
 
 Usage:
-  python train.py --malaysia_data data/malaysia --vietnam_data data/vietnam
-  python train.py --retrain   # force retraining
+  python train.py --split_dir clean_split --malaysia_data clean_split \\
+                  --vietnam_data vietnam --sessions sessions.csv \\
+                  --cv_mode group --seed 42 --no_latency
+
+  --cv_mode group   keeps a capture session whole (the protocol the paper reports)
+  --cv_mode image   the control condition, for reproducing the leakage estimate
+  --retrain         force retraining; omit it to resume from checkpoints
 
 Dataset:
-  Malaysia dataset is not publicly available (commercial confidentiality).
-  To request access, open an issue on the repository or contact the maintainers.
-  Vietnam dataset: Nguyen et al. (2025), Data in Brief.
+  Malaysia dataset: released on Zenodo under CC BY 4.0, with per-image capture
+  session identifiers. Group your partitions by the session column; an
+  image-level split leaks 79.6% of images on this data and inflates macro F1
+  by 12.2 points on average across nine architectures.
+  Vietnam dataset: Nguyen et al. (2025), Data in Brief, under its own terms.
 
 Requirements:
   See requirements.txt — PyTorch 2.5.1, torchvision 0.20.1, Python 3.10+
@@ -61,7 +68,7 @@ from torchvision.models import (
 from torch.utils.data import (
     DataLoader, WeightedRandomSampler, Subset, Dataset
 )
-from torch.nn.quantized import FloatFunctional
+from torch.ao.nn.quantized import FloatFunctional
 
 from sklearn.metrics import (
     classification_report, confusion_matrix,
@@ -143,10 +150,11 @@ if not VN_DATA.exists():
 
 IMG_EXT = {'.jpg', '.jpeg', '.png', '.bmp', '.webp', '.tiff'}
 
+# Collection folders were named in mixed Chinese and English; this maps them
+# to the ASCII class names used throughout. Kept because the Zenodo release
+# ships the ASCII names and someone re-running from raw capture folders needs it.
 FOLDER_RENAME = {
     'Leaf_rot(叶腐病': 'Leaf_rot',
-    'Stem_Borer(':     'Stem_Borer',
-    'Weevil（象鼻虫':  'Weevil',
 }
 
 CLASS_TYPE = {
@@ -245,7 +253,7 @@ df_stats.to_csv(SAVE_DIR / 'dataset_statistics.csv', index=False, encoding='utf-
 
 # Dataset distribution figure
 df_plot = df_stats[df_stats.Class != 'TOTAL'].copy()
-type_colors = {'Disease':'#e74c3c','Pest':'#3498db','Background':'#95a5a6','Unknown':'#bdc3c7'}
+type_colors = {'Disease':'#e74c3c','Unknown':'#bdc3c7'}
 bar_colors  = [type_colors.get(t,'#bdc3c7') for t in df_plot['Type']]
 fig, ax = plt.subplots(figsize=(14, 5))
 bars = ax.bar(range(len(df_plot)), df_plot['Total'], color=bar_colors, edgecolor='black', linewidth=0.5)
@@ -740,9 +748,8 @@ macro_f1 = rpt_dict['macro avg']['f1-score']*100
 ax.axhline(macro_f1,color='black',linestyle='--',label=f'Macro F1={macro_f1:.1f}%')
 ax.set_ylabel('F1 (%)'); ax.set_title('Per-Class F1 — Agri-EfficientNet (LFA)')
 ax.set_ylim(0,110); plt.xticks(rotation=25,ha='right')
-d_p = mpatches.Patch(color='#e74c3c',label='Disease (cross-country)')
-p_p = mpatches.Patch(color='#3498db',label='Pest (Malaysia only)')
-ax.legend(handles=[d_p,p_p])
+ax.legend(handles=[mpatches.Patch(color='#e74c3c',
+                   label='Disease (mapped for cross-country)')])
 for bar,val in zip(bars,df_pc['F1']):
     ax.text(bar.get_x()+bar.get_width()/2,bar.get_height()+0.5,
             f'{val:.1f}',ha='center',va='bottom',fontsize=7)
@@ -1099,10 +1106,11 @@ print(df_mcn.to_string(index=False))
 df_mcn.to_csv(SAVE_DIR/'mcnemar_results.csv',index=False)
 
 # =============================================================================
-# 14. 5-FOLD CROSS VALIDATION (Disease subset only)
+# 14. GROUPED CROSS VALIDATION
+#     k is chosen by max_usable_k, not fixed at 5: the rarest class bounds it
 # =============================================================================
 print('\n' + '='*60)
-print('STEP 10: 5-Fold Cross-Validation (Disease subset)')
+print(f'STEP 10: Grouped Cross-Validation ({CV_MODE} partition)')
 print('='*60)
 
 DISEASE_CLASSES = list(class_names)  # All classes are disease in this version
@@ -1307,8 +1315,9 @@ if not df_vn.empty:
         print(f'\nVietnam External Validation:')
         print(f'  F1 = {ours_vn["Macro F1 (%)"]:.1f}% (drop = {drop:.1f}% from Malaysia)')
 
-print(f'\n5-Fold CV (Disease subset): F1 = {mean_f1:.2f}% ± {std_f1:.2f}%')
-print(f'LFA overhead: +{lfa_ms_-base_ms:.2f}ms ({overhead:.1f}%)')
+print(f'\n{k}-fold grouped CV: F1 = {mean_f1:.2f}% ± {std_f1:.2f}%')
+if not NO_LAT:
+    print(f'LFA overhead: +{lfa_ms_-base_ms:.2f}ms ({overhead:.1f}%)')
 
 print(f'\nAll outputs saved to: {SAVE_DIR}')
 print('\nFiles generated:')
