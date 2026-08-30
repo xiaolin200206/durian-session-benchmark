@@ -1,12 +1,49 @@
 cff-version: 1.2.0
-message: "If you use this dataset or code, please cite the paper and group your splits by the session column."
-title: "What a Reported Accuracy Measures: durian disease classification benchmark"
+title: >-
+  Session-level evaluation protocol and audit tools for the durian
+  disease benchmark
+message: >-
+  If you use this software or the accompanying dataset, please cite
+  both. The dataset DOI below is the one to cite for the images and
+  the capture-session identifiers.
+type: software
 authors:
-  - family-names: "〔surname〕"
-    given-names: "〔given names〕"
-version: "1.0.0"
-date-released: "〔YYYY-MM-DD〕"
-license: MIT              # code
-# The dataset is released separately on Zenodo under CC-BY-4.0.
-# See the Zenodo record for the dataset licence and DOI.
-repository-code: "〔GitHub URL〕"
+  - family-names: Lin
+    given-names: Ding Shan
+    orcid: https://orcid.org/0009-0009-6031-8479
+    affiliation: UCSI University
+repository-code: https://github.com/xiaolin200206/durian-session-benchmark
+url: https://github.com/xiaolin200206/durian-session-benchmark
+abstract: >-
+  Training, evaluation and audit code for a durian disease dataset
+  collected in Peninsular Malaysia. The 560 images resolve into 73
+  independent capture sessions; an image-level random split places
+  79.6% of images in sessions that straddle the train-test boundary
+  and inflates macro F1 by 12.2 points on average across nine
+  architectures. This repository contains the partitioning utilities
+  that avoid that, and a script for each of the four protocol
+  decisions the accompanying paper measures.
+keywords:
+  - data leakage
+  - grouped cross-validation
+  - capture session
+  - plant disease classification
+  - reproducibility
+  - benchmark
+license: MIT
+version: 1.0.0
+date-released: '2026-08-30'
+references:
+  - type: dataset
+    title: >-
+      Durian disease field dataset, Peninsular Malaysia, with
+      capture-session identifiers
+    authors:
+      - family-names: Lin
+        given-names: Ding Shan
+        orcid: https://orcid.org/0009-0009-6031-8479
+    doi: 10.5281/zenodo.22177133
+    url: https://doi.org/10.5281/zenodo.22177133
+    year: 2026
+    publisher:
+      name: Zenodo
