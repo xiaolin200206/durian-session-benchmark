@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Agri-EfficientNet: Durian Disease Classification
-================================================
+Durian disease classification under session-level evaluation
+============================================================
 Paper  : What a Reported Accuracy Measures: Capture-Session Leakage and
          Cross-Country Transfer in Durian Disease Classification
 
@@ -92,7 +92,9 @@ if device == 'cuda':
 # =============================================================================
 import argparse
 
-parser = argparse.ArgumentParser(description='Agri-EfficientNet: Durian Disease Classification')
+parser = argparse.ArgumentParser(
+    description='Session-level evaluation of durian disease classifiers. '
+                'Group partitions by capture session; see README.')
 parser.add_argument('--malaysia_data', type=str, default='data/malaysia',
                     help='Path to Malaysia dataset root (class subfolders)')
 parser.add_argument('--vietnam_data',  type=str, default='data/vietnam',
@@ -138,8 +140,10 @@ for d in [SAVE_DIR, CKPT_DIR, SPLIT_DIR]:
 if not MY_DATA.exists():
     raise FileNotFoundError(
         f"Malaysia data not found at: {MY_DATA}\n"
-        "Please download the dataset and specify --malaysia_data <path>\n"
-        "To request access: open an issue on the repository or contact the maintainers."
+        "The dataset is on Zenodo under CC BY 4.0; download it and pass\n"
+        "--malaysia_data <path>. Use the 512 px copies, not the originals:\n"
+        "the two resampling paths to 224 px differ and the reported numbers\n"
+        "are computed on the 512 px set."
     )
 if not VN_DATA.exists():
     raise FileNotFoundError(
@@ -193,7 +197,7 @@ ABLATION_CONFIGS = [
     ('EfficientNet-B0 (No Attention)', 'none'),
     ('EfficientNet-B0 + SE',           'se'),
     ('EfficientNet-B0 + CBAM',         'cbam'),
-    ('Agri-EfficientNet + LFA (Ours)', 'lfa'),
+    ('EfficientNet-B0 + LFA (ours)',   'lfa'),
 ]
 
 MODEL_CONFIGS = [
@@ -206,7 +210,7 @@ MODEL_CONFIGS = [
     ('efficientnet_b0',  'EfficientNet-B0 (No LFA)'),
     ('efficientnetv2_s', 'EfficientNetV2-S'),
     ('convnext_tiny',    'ConvNeXt-Tiny'),
-    ('agri_efficientnet','Agri-EfficientNet (Ours)'),
+    ('agri_efficientnet','EfficientNet-B0 + LFA (ours)'),
 ]
 
 def count_imgs(folder):
@@ -668,7 +672,7 @@ bar_colors = [COLOR_MAP[k] for k in df_sorted['_key']]
 our_idx    = df_sorted[df_sorted['_key']=='agri_efficientnet'].index[0]
 
 fig, axes = plt.subplots(2,2,figsize=(16,10))
-fig.suptitle('Model Comparison — Durian Disease & Pest Classification',fontsize=14,fontweight='bold')
+fig.suptitle('Architecture comparison, session-level partition',fontsize=14,fontweight='bold')
 for metric,ax in [('Macro F1 (%)',axes[0,0]),('Accuracy (%)',axes[0,1]),
                   ('Precision (%)',axes[1,0]),('Recall (%)',axes[1,1])]:
     bars = ax.bar(range(len(df_sorted)),df_sorted[metric],
@@ -746,7 +750,7 @@ pc_colors = ['#e74c3c' if r['Cross_Country']=='Yes' else '#3498db'
 bars = ax.bar(df_pc.Class,df_pc['F1'],color=pc_colors,edgecolor='black')
 macro_f1 = rpt_dict['macro avg']['f1-score']*100
 ax.axhline(macro_f1,color='black',linestyle='--',label=f'Macro F1={macro_f1:.1f}%')
-ax.set_ylabel('F1 (%)'); ax.set_title('Per-Class F1 — Agri-EfficientNet (LFA)')
+ax.set_ylabel('F1 (%)'); ax.set_title('Per-class F1, ablation instance')
 ax.set_ylim(0,110); plt.xticks(rotation=25,ha='right')
 ax.legend(handles=[mpatches.Patch(color='#e74c3c',
                    label='Disease (mapped for cross-country)')])
@@ -766,7 +770,7 @@ plt.colorbar(im,ax=ax)
 ax.set_xticks(range(num_classes)); ax.set_xticklabels(class_names,rotation=45,ha='right')
 ax.set_yticks(range(num_classes)); ax.set_yticklabels(class_names)
 ax.set_xlabel('Predicted'); ax.set_ylabel('True')
-ax.set_title('Confusion Matrix (Normalized) — Agri-EfficientNet (LFA)')
+ax.set_title('Normalised confusion matrix, ablation instance')
 for i in range(num_classes):
     for j in range(num_classes):
         ax.text(j,i,f'{cm_norm[i,j]:.2f}',ha='center',va='center',
@@ -876,7 +880,7 @@ try:
     print(f'  LFA target layer   : {type(lfa_tl).__name__}')
 
     fig, axes = plt.subplots(3, len(SHARED_CLASSES), figsize=(len(SHARED_CLASSES)*3, 9))
-    fig.suptitle('Grad-CAM: Original | ResNet-50 (Baseline) | Agri-EfficientNet LFA (Ours)',
+    fig.suptitle('Grad-CAM: original, ResNet-50, and EfficientNet-B0 + LFA',
                  fontsize=11, fontweight='bold')
 
     for col, cls in enumerate(SHARED_CLASSES):
@@ -908,7 +912,7 @@ try:
             axes[2,col].imshow(cam_lfa)
         except Exception as e:
             axes[2,col].text(0.5,0.5,f'err:{str(e)[:40]}',ha='center',fontsize=6,wrap=True)
-        axes[2,col].set_title('LFA (Ours)',fontsize=7); axes[2,col].axis('off')
+        axes[2,col].set_title('EfficientNet-B0 + LFA',fontsize=7); axes[2,col].axis('off')
 
     plt.tight_layout()
     plt.savefig(SAVE_DIR/'fig_gradcam_comparison.png',dpi=150); plt.close()
@@ -985,7 +989,7 @@ PERTURBATIONS = [
 
 # Models to test robustness: LFA vs ResNet-50 vs EfficientNet-B0
 robust_models = {
-    'Agri-EfficientNet (LFA)':   (CKPT_DIR/'cmp_agri_efficientnet.pth', 'agri_efficientnet'),
+    'EfficientNet-B0 + LFA':     (CKPT_DIR/'cmp_agri_efficientnet.pth', 'agri_efficientnet'),
     'ResNet-50 (Baseline)':      (CKPT_DIR/'cmp_resnet50.pth',          'resnet50'),
     'EfficientNet-B0 (No LFA)':  (CKPT_DIR/'cmp_efficientnet_b0.pth',   'efficientnet_b0'),
 }
@@ -1022,7 +1026,7 @@ df_rob.to_csv(SAVE_DIR/'robustness_results.csv',index=False)
 
 # Robustness line chart
 fig, ax = plt.subplots(figsize=(12,5))
-rob_colors = {'Agri-EfficientNet (LFA)':'#e67e22',
+rob_colors = {'EfficientNet-B0 + LFA':'#e67e22',
               'ResNet-50 (Baseline)':'#e74c3c',
               'EfficientNet-B0 (No LFA)':'#3498db'}
 for mname, results in rob_results.items():
@@ -1087,7 +1091,7 @@ if yt_ref is not None:
         if att == 'lfa' or att not in mcn_preds: continue
         _, yp_other = mcn_preds[att]
         row = run_mcnemar(yt_ref, yp_lfa_ref, yp_other,
-                          'Agri-EfficientNet (LFA)', name)
+                          'EfficientNet-B0 + LFA', name)
         mcn_rows.append(row)
 
     # Also vs ResNet-50
@@ -1097,7 +1101,7 @@ if yt_ref is not None:
         m.load_state_dict(torch.load(str(resnet_ckpt),map_location=device))
         _, yp_rn = get_preds(m, test_loader)
         row = run_mcnemar(yt_ref, yp_lfa_ref, yp_rn,
-                          'Agri-EfficientNet (LFA)', 'ResNet-50')
+                          'EfficientNet-B0 + LFA', 'ResNet-50')
         mcn_rows.append(row)
 
 df_mcn = pd.DataFrame(mcn_rows)
@@ -1113,7 +1117,7 @@ print('\n' + '='*60)
 print(f'STEP 10: Grouped Cross-Validation ({CV_MODE} partition)')
 print('='*60)
 
-DISEASE_CLASSES = list(class_names)  # All classes are disease in this version
+DISEASE_CLASSES = list(class_names)  # all five classes are diseases
 print(f'Disease classes for CV: {DISEASE_CLASSES}')
 
 # Build disease-only dataset from full split
@@ -1295,7 +1299,7 @@ ours_my = df_cmp[df_cmp['_key']=='agri_efficientnet'].iloc[0]
 print('\n' + '='*80)
 print('FINAL SUMMARY')
 print('='*80)
-print(f'\nMalaysia Internal Test — Agri-EfficientNet (LFA):')
+print(f'\nMalaysia held-out test, EfficientNet-B0 + LFA:')
 print(f'  Accuracy  : {ours_my["Accuracy (%)"]:.1f}%')
 print(f'  Macro F1  : {ours_my["Macro F1 (%)"]:.1f}%')
 print(f'  Size      : {ours_my["Size(MB)"]} MB')
