@@ -300,6 +300,10 @@ def figS1(results, out, ckpt=None):
         print('  Fig S1: no *_hist.json found. They are written beside the')
         print('          checkpoints, so pass --ckpt ckpt/group_s42')
         return
+    if 'abl' in Path(f).stem:
+        print('  !! Fig S1 read the ABLATION history, but the title and the')
+        print('     caption both say comparison instance. Point --ckpt at the')
+        print('     comparison run, or change the title and the caption together.')
     fig, ax = plt.subplots(figsize=(5.4, 3.2))
     ep = np.arange(1, len(hist['train_acc']) + 1)
     ax.plot(ep, np.array(hist['train_acc']) * 100, color=BLUE, label='train')
@@ -308,7 +312,9 @@ def figS1(results, out, ckpt=None):
     ax.annotate('stage 2 begins', (15.8, 25), fontsize=7.5, color=GREY)
     ax.set_xlabel('Epoch'); ax.set_ylabel('Accuracy (%)')
     ax.legend(frameon=False, fontsize=8)
-    ax.set_title(f'{Path(f).stem.replace("_hist","")}, seed 42',
+    # Display name, not the checkpoint key. Section 5.1 of the paper drops the
+    # Agri-EfficientNet name deliberately, so it must not reappear in a figure.
+    ax.set_title('EfficientNet-B0 + LFA, comparison instance, seed 42',
                  fontsize=8.5, loc='left')
     save(fig, out, 'FigS1_training_curves')
 
