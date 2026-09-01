@@ -162,8 +162,8 @@ python session_split.py --report
 
 ## Results this repository reproduces
 
-Session-level, macro F1 %, mean ± s.d. over four seeds (42, 1, 2, 3); the
-image-level control uses three (42, 1, 2).
+Macro F1 %, mean ± s.d. over four seeds (42, 1, 2, 3) in both partition
+conditions.
 
 | Model | Image-level | Session-level | Inflation (pp) |
 |---|---|---|---|
@@ -288,7 +288,7 @@ leakage-free evaluation.
 ```bibtex
 @dataset{durian_session_2026,
   author    = {Lin, Ding Shan},
-  title     = {Durian disease field dataset, Peninsular Malaysia,
+  title     = {Durian disease field dataset from Peninsular Malaysia,
                with capture-session identifiers},
   year      = {2026},
   publisher = {Zenodo},

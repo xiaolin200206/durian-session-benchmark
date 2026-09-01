@@ -36,7 +36,7 @@ date-released: '2026-08-30'
 references:
   - type: dataset
     title: >-
-      Durian disease field dataset, Peninsular Malaysia, with
+      Durian disease field dataset from Peninsular Malaysia, with
       capture-session identifiers
     authors:
       - family-names: Lin
