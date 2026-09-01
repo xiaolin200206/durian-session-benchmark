@@ -3,7 +3,7 @@
 Code and evaluation protocol for *What a Reported Accuracy Measures: Capture-Session
 Leakage and Cross-Country Transfer in Durian Disease Classification*.
 
-Dataset: **〔https://doi.org/10.5281/zenodo.22177133〕**
+Dataset: **〔Zenodo DOI〕**
 
 ---
 
