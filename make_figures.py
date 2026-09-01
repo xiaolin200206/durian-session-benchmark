@@ -11,7 +11,7 @@ reused. This regenerates all nine from the archive.
 Produces, at 300 dpi in both PNG and PDF:
 
     Fig 1  class distribution, by images and by capture sessions
-    Fig 2  paired image-level vs session-level macro F1 (Table 4)
+    Fig 2  paired image-level vs session-level macro F1 (Table 2)
     Fig 3  confusion matrix, session-level test set
     Fig 4  Grad-CAM             -- see the note below, this one is not automatic
     Fig 5  accuracy against parameter count
@@ -79,7 +79,7 @@ CHANCE3 = 32.5
 # Table 9 centre-crop control, three classes
 CROP = [('EfficientNet-B0 + LFA', 73.3, 32.8, 65.5, 45.8),
         ('EfficientNet-B0', 67.2, 28.4, 66.6, 48.9),
-        ('MobileNetV2', 72.5, 30.3, 69.8, 40.8)]
+        ('MobileNetV2', 72.5, 30.2, 69.8, 40.8)]
 # Table 5 per-class, seed 42
 PERCLASS = [('Algal', 83.3, 31.2, 45.5), ('Leaf_rot', 55.6, 100.0, 71.4),
             ('Phomopsis', 100.0, 93.3, 96.6), ('Pink_disease', 100.0, 50.0, 66.7),

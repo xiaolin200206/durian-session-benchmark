@@ -16,7 +16,8 @@ set -u
 
 ROOT=${DURIAN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}
 CODE=$ROOT/github
-SEEDS="${SEEDS:-42 1 2 3}"           # session-level; image-level control used 42 1 2
+SEEDS="${SEEDS:-42 1 2 3}"           # session-level
+IMAGE_SEEDS="${IMAGE_SEEDS:-42 1 2}" # image-level control, as reported in the paper
 
 SESSION_SPLIT=$ROOT/clean_split          # capture-session partition
 IMAGE_SPLIT=$ROOT/image_split            # image-level control
@@ -85,7 +86,10 @@ for s in $SEEDS; do
 done
 
 # Image-level control: the comparison that quantifies the leakage.
-for s in $SEEDS; do
+# Three seeds, which is what the paper reports. Set IMAGE_SEEDS="42 1 2 3" to
+# make the paired comparison symmetric; if you do, every number in Table 2 of
+# the paper moves and must be regenerated together.
+for s in $IMAGE_SEEDS; do
     run_one image "$IMAGE_SPLIT" "$s"
 done
 
@@ -96,8 +100,8 @@ echo "=================================================================="
 echo " finished in ${mins} min"
 echo "=================================================================="
 if [ -n "$DRY" ]; then
-    echo "That was one seed at 2 epochs. The real run is 5 seeds x 2 regimes"
-    echo "at 15+15 epochs, so scale accordingly before committing."
+    echo "That was one seed at 2 epochs. The real run is 4 session-level seeds"
+    echo "and 3 image-level, at 15+15 epochs. Scale accordingly before committing."
 else
     echo "Now aggregate:"
     echo "  python aggregate.py --root $ROOT/results --out $ROOT/summary"

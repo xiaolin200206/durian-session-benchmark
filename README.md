@@ -17,10 +17,11 @@ metric you report is inflated.
 
 In this dataset that is not a marginal effect. Under an image-level random split,
 **79.6% of images sit in sessions that straddle a partition boundary**. Re-running
-the identical experiment with sessions kept whole lowers macro F1 by **11.8 points
-on average across nine architectures** (range 4.7–18.7), and **reverses the ranking
-of attention modules**: squeeze-and-excitation is best under the image-level
-protocol and worst under the session-level one.
+the identical experiment with sessions kept whole lowers macro F1 by **12.2 points
+on average across nine architectures** (range 4.9–18.4, all nine positive, sign
+test p = 0.004). An earlier three-seed analysis also appeared to show the ranking
+of attention modules reversing between the two protocols; a fourth seed removed
+that, and the paper reports the retraction. Do not cite the reversal.
 
 `sessions.csv` ships with the data so that grouped evaluation is the default.
 **If you use this dataset, group by the `session` column.**
@@ -140,6 +141,24 @@ hashing instead. `audit_public.py` will still detect exact and near duplicates
 across splits, which is the part that matters most.
 
 ---
+
+### Session structure
+
+`sessions.csv` resolves the 560 images into 73 sessions: 48 burst sessions (463
+images), 7 video-derived (63), 4 messaging-batch (20), and 14 files that matched
+no rule. A further 11 recovered groups hold one image, so 25 of the 73 sessions
+are single-image sessions.
+
+The distribution is strongly skewed and this matters for reading the per-class
+results. Median session size is 4 images, the largest is 78, and the ten largest
+sessions hold 295 images -- 52.7% of the dataset. Within classes the single
+largest session holds 49.7% of Phomopsis and 62.8% of Root_disease, which is why
+those two classes' high per-class scores should be read as provisional. Reproduce
+with:
+
+```bash
+python session_split.py --report
+```
 
 ## Results this repository reproduces
 
