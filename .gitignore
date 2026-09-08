@@ -2,8 +2,7 @@ __pycache__/
 *.pyc
 *.pth
 ckpt*/
-results_disease/
-results_cc_s42/
+results*/
 summary/
 clean_split*/
 image_split*/

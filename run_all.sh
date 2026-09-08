@@ -39,7 +39,7 @@ for f in "$SESSIONS" "$SESSION_SPLIT" "$VIETNAM"; do
 done
 if [ ! -d "$IMAGE_SPLIT" ]; then
     echo "Missing $IMAGE_SPLIT — build it first:"
-    echo "  python make_image_split.py --src $ROOT/Classication_model_split --dst $IMAGE_SPLIT"
+    echo "  python scripts/data/make_image_split.py --src $ROOT/Classication_model_split --dst $IMAGE_SPLIT"
     exit 1
 fi
 
@@ -100,5 +100,5 @@ if [ -n "$DRY" ]; then
     echo "at 15+15 epochs. Scale accordingly before committing."
 else
     echo "Now aggregate:"
-    echo "  python aggregate.py --root $ROOT/results --out $ROOT/summary"
+    echo "  python scripts/analysis/aggregate.py --root $ROOT/results --out $ROOT/summary"
 fi

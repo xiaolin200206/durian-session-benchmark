@@ -34,7 +34,7 @@ keywords:
   - sampling design
   - pseudoreplication
 license: MIT
-version: 2.1.0
+version: 2.2.0
 date-released: '2026-09-08'
 references:
   - type: dataset
