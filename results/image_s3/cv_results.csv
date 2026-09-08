@@ -1,0 +1,5 @@
+Fold,cv_mode,seed,Test images,Test sessions,Accuracy (%),Macro F1 (%)
+1,image,3.0,187.0,47.0,79.14,73.51
+2,image,3.0,187.0,55.0,82.35,80.86
+3,image,3.0,186.0,50.0,82.8,79.97
+Mean±Std,,,,,81.43±2.00,78.11±4.01

@@ -10,12 +10,13 @@ reused. This regenerates all nine from the archive.
 
 Produces, at 300 dpi in both PNG and PDF:
 
-    Fig 1  class distribution, by images and by capture sessions
-    Fig 2  paired image-level vs session-level macro F1 (Table 2)
-    Fig 3  confusion matrix, session-level test set
-    Fig 4  Grad-CAM             -- see the note below, this one is not automatic
+    Fig 1  the sampling hierarchy: image / session / tree / orchard / region
+    Fig 2  session structure: class composition, session-size distribution,
+           and provenance by class (reads sessions.csv)
+    Fig 3  paired image-level vs session-level macro F1 (Table 5)
+    Fig 4  confusion matrix, session-level test set
     Fig 5  accuracy against parameter count
-    Fig 6  cross-country, three organ-matched classes, with the crop control
+    Fig 6  cross-region, three foliar correspondences, with the crop control
     Fig 7  zero-shot per-class behaviour beside the in-domain control
     Fig S1 two-stage training curves
     Fig S2 macro F1 under the five perturbations
@@ -110,24 +111,149 @@ def save(fig, out, name):
 
 # --------------------------------------------------------------------------
 def fig1(out):
-    fig, ax = plt.subplots(figsize=(6.2, 3.2))
+    """The sampling hierarchy. Conceptual: no data dependency."""
+    from matplotlib.patches import FancyBboxPatch
+    from matplotlib.lines import Line2D
+    fig, ax = plt.subplots(figsize=(6.6, 4.3))
+    ax.set_xlim(0, 10); ax.set_ylim(0, 10); ax.axis('off')
+    levels = [
+        dict(y=8.6, w=9.2, label='Production region', n='e.g. Malaysia vs Vietnam',
+             q='Can this model be exported?', measured=True),
+        dict(y=6.7, w=7.4, label='Orchard', n='the purchase / deployment unit',
+             q='How well in a neighbour\u2019s orchard?', measured=False),
+        dict(y=4.8, w=5.6, label='Tree', n='the management unit',
+             q='(natural observation unit; approximated below)', measured=False),
+        dict(y=2.9, w=3.8, label='Capture session', n='one specimen, one visit',
+             q='How well on a new specimen, familiar orchard?', measured=True),
+        dict(y=1.0, w=2.0, label='Image', n='one measurement',
+             q='(answers no question a practitioner asks)', measured=True),
+    ]
+    for lv in levels:
+        x0 = 5 - lv['w'] / 2
+        ax.add_patch(FancyBboxPatch(
+            (x0, lv['y'] - 0.525), lv['w'], 1.05,
+            boxstyle='round,pad=0.02,rounding_size=0.12', linewidth=1.4,
+            edgecolor=(BLUE if lv['measured'] else GREY),
+            facecolor=('#eaf1f8' if lv['measured'] else '#f3f3f3'), zorder=2))
+        ax.text(5, lv['y'] + 0.16, lv['label'], ha='center', va='center',
+                fontsize=10.5, fontweight='bold', zorder=3)
+        ax.text(5, lv['y'] - 0.24, lv['n'], ha='center', va='center',
+                fontsize=8, style='italic', color='#444444', zorder=3)
+        qx = x0 + lv['w'] + 0.35
+        ax.plot([x0 + lv['w'], qx - 0.05], [lv['y'], lv['y']],
+                color='#999999', linewidth=0.8, zorder=1)
+        ax.text(qx, lv['y'], lv['q'], ha='left', va='center', fontsize=8,
+                color=('#333333' if lv['measured'] else RED),
+                style=('normal' if lv['measured'] else 'italic'))
+    for a, b in zip(levels[:-1], levels[1:]):
+        ax.annotate('', xy=(5, a['y'] - 0.545), xytext=(5, b['y'] + 0.545),
+                    arrowprops=dict(arrowstyle='-|>', color=BLUE, lw=1.3,
+                                    shrinkA=0, shrinkB=0))
+    ax.annotate('missing: not recorded\nat collection, and not\nrecoverable afterwards',
+                xy=(5 - levels[1]['w'] / 2, levels[1]['y']), xytext=(0.15, 6.7),
+                fontsize=7.3, color=RED, ha='left', va='center',
+                arrowprops=dict(arrowstyle='-', color=RED, lw=0.9,
+                                connectionstyle='arc3,rad=-0.15'))
+    ax.text(5, 9.75,
+            'image  \u2282  capture session  \u2282  tree  \u2282  orchard  \u2282  production region',
+            ha='center', va='center', fontsize=9.3, color='#222222')
+    ax.legend(handles=[
+        Line2D([0], [0], marker='s', color='none', markerfacecolor='#eaf1f8',
+               markeredgecolor=BLUE, markersize=11, label='scale measured in this study'),
+        Line2D([0], [0], marker='s', color='none', markerfacecolor='#f3f3f3',
+               markeredgecolor=GREY, markersize=11, label='scale not measured')],
+        loc='lower center', bbox_to_anchor=(0.5, -0.06), ncol=2,
+        frameon=False, fontsize=7.6)
+    save(fig, out, 'Fig1_sampling_hierarchy')
+
+
+# --------------------------------------------------------------------------
+def fig2_class_panel(out, sessions_csv='sessions.csv'):
+    """Session structure: class composition, session-size distribution,
+    and provenance by class. Panels b and c read sessions.csv."""
+    import csv as _csv
+    import collections as _c
+
+    rows = list(_csv.DictReader(open(sessions_csv, newline='', encoding='utf-8-sig')))
+    sess_count = _c.Counter(r['session'] for r in rows)
+    sizes = sorted(sess_count.values(), reverse=True)
+    TYPES = ['burst', 'video', 'whatsapp', 'single']
+    type_by_class = {c: _c.Counter() for c in CLASSES}
+    for r in rows:
+        type_by_class[r['cls']][r['session'].split(':')[0]] += 1
+
+    fig = plt.figure(figsize=(9.6, 6.6))
+    gs = fig.add_gridspec(2, 2, height_ratios=[1, 1], width_ratios=[1, 1],
+                          hspace=0.55, wspace=0.32)
+    axA = fig.add_subplot(gs[0, 0])
+    axB = fig.add_subplot(gs[0, 1])
+    axC = fig.add_subplot(gs[1, :])
+
     x = np.arange(len(CLASSES)); w = 0.38
-    # one axis, so bar heights are directly comparable. A twin axis would let
-    # 27 sessions draw taller than 153 images, which is the opposite of the point.
-    ax.bar(x - w/2, IMAGES, w, color=BLUE, label='Images')
-    ax.bar(x + w/2, SESSIONS, w, color=RED, label='Capture sessions')
+    axA.bar(x - w/2, IMAGES, w, color=BLUE, label='Images')
+    axA.bar(x + w/2, SESSIONS, w, color=RED, label='Capture sessions')
     for i, (im, se) in enumerate(zip(IMAGES, SESSIONS)):
-        ax.text(i - w/2, im + 3, str(im), ha='center', fontsize=8)
-        ax.text(i + w/2, se + 3, str(se), ha='center', fontsize=8, color=RED)
-    ax.set_xticks(x); ax.set_xticklabels(CLASSES, rotation=15, ha='right')
-    ax.set_ylabel('Count')
-    ax.set_ylim(0, max(IMAGES) * 1.18)
-    ax.legend(frameon=False, loc='upper right', fontsize=8)
-    ax.set_title('560 images, 73 independent capture sessions', fontsize=9, loc='left')
-    save(fig, out, 'Fig1_class_distribution')
+        axA.text(i - w/2, im + 3, str(im), ha='center', fontsize=7.5)
+        axA.text(i + w/2, se + 3, str(se), ha='center', fontsize=7.5, color=RED)
+    axA.set_xticks(x); axA.set_xticklabels(CLASSES, rotation=20, ha='right', fontsize=7.8)
+    axA.set_ylabel('Count'); axA.set_ylim(0, max(IMAGES) * 1.2)
+    axA.legend(frameon=False, loc='upper right', fontsize=7.3)
+    axA.set_title('a  Class composition (n = 560 images, 73 sessions)',
+                  fontsize=8.6, loc='left')
+
+    axB.bar(np.arange(1, len(sizes) + 1), sizes, width=0.9, color=GREEN)
+    med = float(np.median(sizes))
+    axB.axhline(med, color=GREY, lw=1, ls='--')
+    axB.text(len(sizes) * 0.98, med + 1.5, f'median = {int(med)}',
+             ha='right', fontsize=7.3, color=GREY)
+    top10 = sum(sizes[:10])
+    axB.annotate(f'10 largest sessions\n= {top10}/{sum(sizes)} images '
+                 f'({top10/sum(sizes)*100:.1f}%)',
+                 xy=(5.5, sizes[4]), xytext=(20, sizes[4] + 18),
+                 fontsize=7.3, color=GREEN,
+                 arrowprops=dict(arrowstyle='-', color=GREEN, lw=0.8))
+    axB.set_xlabel('Session, ranked by size'); axB.set_ylabel('Images in session')
+    axB.set_title('b  Distribution of session sizes (73 sessions)',
+                  fontsize=8.6, loc='left')
+
+    colors = {'burst': BLUE, 'video': RED, 'whatsapp': GREEN, 'single': GREY}
+    bottoms = np.zeros(len(CLASSES)); xC = np.arange(len(CLASSES))
+    LABEL_MIN = 10
+    small = []
+    for ty in TYPES:
+        vals = np.array([type_by_class[c].get(ty, 0) for c in CLASSES])
+        axC.bar(xC, vals, bottom=bottoms, color=colors[ty], width=0.55,
+                label=f'{ty} ({int(vals.sum())})')
+        for i, v in enumerate(vals):
+            if v >= LABEL_MIN:
+                axC.text(xC[i], bottoms[i] + v/2, str(int(v)), ha='center',
+                         va='center', fontsize=7.4, color='white')
+            elif v > 0:
+                small.append((int(xC[i]), bottoms[i] + v/2, int(v), ty))
+        bottoms += vals
+    by_class = _c.defaultdict(list)
+    for xi, yi, v, ty in small:
+        by_class[xi].append((yi, v, ty))
+    for xi, items in by_class.items():
+        items.sort()
+        axC.annotate(', '.join(f'{ty} {v}' for _, v, ty in items),
+                     xy=(xi, items[0][0]), xytext=(xi, bottoms[xi] + 14),
+                     ha='center', va='bottom', fontsize=6.9, color='#333333',
+                     arrowprops=dict(arrowstyle='-', color='#999999', lw=0.7))
+    axC.set_xticks(xC); axC.set_xticklabels(CLASSES, fontsize=8.2)
+    axC.set_ylabel('Images'); axC.set_ylim(0, max(bottoms) * 1.28)
+    axC.set_title('c  Provenance by class \u2014 all video-derived frames fall in one class',
+                  fontsize=8.6, loc='left')
+    axC.legend(frameon=False, ncol=4, fontsize=7.3, loc='upper right')
+    vb = type_by_class['Phomopsis']['burst']; vv = type_by_class['Phomopsis']['video']
+    axC.annotate(f'{vv} video frames,\nall Phomopsis', xy=(2, vb + vv/2),
+                 xytext=(3.15, 110), fontsize=7.3, color=RED,
+                 arrowprops=dict(arrowstyle='-', color=RED, lw=0.8,
+                                 connectionstyle='arc3,rad=0.2'))
+    save(fig, out, 'Fig2_session_structure')
 
 
-def fig2(out):
+def fig3(out):
     fig, ax = plt.subplots(figsize=(6.6, 3.6))
     names = [p[0] for p in PAIRED]
     y = np.arange(len(names))[::-1]
@@ -149,21 +275,26 @@ def fig2(out):
     ax.set_ylim(-0.9, len(names) - 0.2)
     ax.set_title('Mean inflation +12.2 points (sign test p = 0.004)',
                  fontsize=9, loc='left')
-    save(fig, out, 'Fig2_paired_partition')
+    save(fig, out, 'Fig3_paired_partition')
 
 
-def fig3(results, out):
+def fig4(results, out):
     """Confusion matrix; read from the run if present, else drawn from Table 5."""
     cm = None
     p = Path(results) / 'group_s42' / 'confusion_matrix.csv'
     if p.exists():
         cm = np.loadtxt(p, delimiter=',')
     if cm is None:
-        print('  Fig3: no confusion_matrix.csv found. Generate it with:')
-        print('        python export_confusion.py --ckpt ckpt/group_s42/'
-              'cmp_agri_efficientnet.pth \\')
-        print('            --split_dir clean_split --out results/group_s42')
-        return
+        # Fall back to the matrix implied by Table 6 (seed 42, ablation
+        # instance). Rows are true classes in CLASSES order, supports
+        # 16/15/15/2/8. Reproduces the published figure exactly; regenerate
+        # from a checkpoint with export_confusion.py if you prefer.
+        cm = np.array([[5, 11, 0, 0, 0],
+                       [0, 15, 0, 0, 0],
+                       [1,  0, 14, 0, 0],
+                       [0,  1, 0, 1, 0],
+                       [0,  0, 0, 0, 8]], dtype=float)
+        print('  Fig4: no confusion_matrix.csv found; using the Table 6 values.')
     fig, ax = plt.subplots(figsize=(4.4, 3.9))
     norm = cm / cm.sum(1, keepdims=True)
     im = ax.imshow(norm, cmap='Blues', vmin=0, vmax=1)
@@ -176,7 +307,7 @@ def fig3(results, out):
     ax.set_yticklabels(CLASSES, fontsize=8)
     ax.set_xlabel('Predicted'); ax.set_ylabel('True')
     fig.colorbar(im, ax=ax, fraction=0.045)
-    save(fig, out, 'Fig3_confusion_matrix')
+    save(fig, out, 'Fig4_confusion_matrix')
 
 
 def fig5(out):
@@ -238,7 +369,7 @@ def fig6(out):
     a.annotate(f'chance {CHANCE3}%', (-0.45, CHANCE3 + 2.0),
                ha='left', fontsize=7.5)
     a.set_xticks(x); a.set_xticklabels(names, rotation=35, ha='right', fontsize=7.5)
-    a.set_ylabel('Macro F1 (%), three organ-matched classes')
+    a.set_ylabel('Macro F1 (%), three foliar correspondences')
     a.legend(frameon=False, fontsize=8); a.set_ylim(0, 95)
     a.set_title('Zero-shot transfer, like-for-like classes', fontsize=9, loc='left')
 
@@ -345,14 +476,15 @@ def main():
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
     print(f'writing to {out.resolve()}')
     fig1(out)
-    fig2(out)
-    fig3(args.results, out)
+    fig2_class_panel(out, args.sessions)
+    fig3(out)
+    fig4(args.results, out)
     fig5(out)
     fig6(out)
     fig7(out)
     figS1(args.results, out, args.ckpt)
     figS2(out)
-    print('\nFig 4 (Grad-CAM) is not produced here. Run:')
+    print('\nThe Grad-CAM figure (Online Resource 1) is not produced here. Run:')
     print('  python regen_gradcam.py --ckpt ckpt/group_s42/cmp_agri_efficientnet.pth '
           '--split_dir clean_split --out figures')
     print('and use session-level checkpoints, not the archived image-level ones.')

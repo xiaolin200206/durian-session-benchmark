@@ -1,30 +1,52 @@
-# What a reported accuracy measures — durian disease classification
+# Sampling unit, not image count — durian disease classification
 
-Code and evaluation protocol for *What a Reported Accuracy Measures: Capture-Session
-Leakage and Cross-Country Transfer in Durian Disease Classification*.
+Code and evaluation protocol for *Sampling Unit, Not Image Count: Capture-Session
+Structure Governs the Accuracy Reported for Image-Based Orchard Disease Diagnosis*.
 
-Dataset: **〔https://doi.org/10.5281/zenodo.22177133〕**
+Dataset: **https://doi.org/10.5281/zenodo.22177133**
 
 ---
 
 ## What this repository is for
 
 The dataset contains 560 field images of five durian disease categories, but they
-were produced in only **73 independent capture sessions** — bursts of one lesion,
-video frames, messaging batches. If you split at image level, near-identical views
-of the same specimen land on both sides of the train/test boundary and every
-metric you report is inflated.
+resolve into only **73 reconstructed capture sessions** — bursts of one lesion,
+video frames, messaging batches. Sessions are recovered after the fact from
+filename structure, so treat them as the finest recoverable grouping unit rather
+than as 73 independent observations: images within a session are certainly
+dependent, sessions between themselves only approximately independent. If you
+split at image level, near-identical views of the same specimen land on both
+sides of the train/test boundary and every metric you report is inflated.
 
-In this dataset that is not a marginal effect. Under an image-level random split,
-**79.6% of images sit in sessions that straddle a partition boundary**. Re-running
-the identical experiment with sessions kept whole lowers macro F1 by **12.2 points
-on average across nine architectures** (range 4.9–18.4, all nine positive, sign
-test p = 0.004). An earlier three-seed analysis also appeared to show the ranking
-of attention modules reversing between the two protocols; a fourth seed removed
-that, and the paper reports the retraction. Do not cite the reversal.
+In this dataset that is not a marginal effect. Two figures matter and they are
+easily confused. Counting any boundary, **79.6% of images sit in sessions that
+appear in more than one of train/val/test**. The figure that bears on a reported
+test score is larger: **58 of the 60 image-level test images (96.7%) belong to a
+session that also appears in training**, through 25 shared sessions. Validation is
+contaminated on the same scale (94.4%), so model selection is affected too. Under
+the session-level partition the same measure is **0.0%** — verified, no session
+appears in more than one split.
+
+Re-running the identical experiment with sessions kept whole lowers macro F1 by
+**12.2 points on average across nine architectures** (range 4.9–18.4, positive for
+all nine). We deliberately report no p-value for that consistency: nine
+architectures sharing one dataset, one task and one pair of partitions are not
+nine independent replicates, and testing over them would repeat at the level of
+our own inference the error this work describes. An earlier three-seed analysis
+also appeared to show the ranking of attention modules reversing between the two
+protocols; a fourth seed removed that, and the paper reports the retraction. Do
+not cite the reversal.
 
 `sessions.csv` ships with the data so that grouped evaluation is the default.
 **If you use this dataset, group by the `session` column.**
+
+One caveat on that column. Session identifiers are constructed within class, so a
+continuous camera sequence whose frames were filed under two disease categories
+becomes two sessions. Forty-one camera numbers appear under more than one class,
+and under the session-level partition nine adjacent-numbered pairs (twelve images,
+2.1% of the dataset) still fall on opposite sides of train/test. Grouping by
+session removes most, not all, of the dependence the capture process induces.
+`check_contamination.py` reproduces every number in this paragraph.
 
 ---
 
@@ -80,6 +102,9 @@ when resuming: it discards the checkpoints that make resumption possible.
 | `audit_dataset.py` | Exact and near-duplicate detection within one dataset |
 | `label_conflicts.py` | Identical images carrying two class labels |
 | `audit_public.py` | Audits a *published* split: whole-split overlap, cross-split duplicates, numbering adjacency, preprocessing consistency. Works on any `root/<split>/<class>/` layout |
+| `check_contamination.py` | Reports what a split actually leaks: session overlap between train/val/test separately, the share of test images whose session also appears in training, and cross-class camera-sequence dependence that grouping by session does not remove. Run `python check_contamination.py --data .` |
+| `check_provenance.py` | Audits recoverable provenance in the released files: EXIF GPS, capture timestamp and device tags, and whether orchard identity can be reconstructed. Run `python check_provenance.py --data .` |
+| `fill_table_s1.py` | Recomputes capture sessions at a range of burst-gap thresholds and measures how much of the dataset lands in boundary-crossing sessions. Reproduces Table S1. Run `python fill_table_s1.py --data .` |
 | `peek.py` | Folder inventory, for looking at an unfamiliar dataset before anything else |
 
 ### Preprocessing
@@ -184,8 +209,10 @@ when every fold contains near-duplicates of its own training data, folds agree
 with each other while all overstating the same quantity.
 
 Cross-country, zero-shot on the Vietnamese dataset: all nine architectures lose
-**20.9–42.3 points** over the three classes whose correspondence is organ to
-organ, finishing close to the **32.5% chance baseline**. The spread is wide and
+**20.9–42.3 points** over the three foliar correspondences, finishing close to the
+**32.5% chance baseline**. Of those three, Phomopsis transfers at only 13.7%
+recall, low enough that the correspondence should not be assumed to hold without
+local checking. The spread is wide and
 does not follow home performance — ConvNeXt-Tiny is sixth of nine on the
 Malaysian test set and first on the Vietnamese one.
 
@@ -221,7 +248,7 @@ And it does not preserve the ranking: the two orderings agree only at Spearman
 ρ = 0.65 (p = 0.058, just short of significance with nine points), and the model proposed
 in the paper is fourth under the session-level protocol and last under the
 image-level one. The inflation itself is unambiguous — all nine positive, sign
-test p = 0.004 — but whether leakage systematically reorders architectures is
+positive for all nine — but whether leakage systematically reorders architectures is
 not settled by nine points.
 
 ---
@@ -283,16 +310,49 @@ leakage-free evaluation.
   result. Read the table it prints; do not rely on the last line.
 - Training uses 512 px copies; the release contains full-resolution originals.
 
+## What is in `results/`
+
+Eight directories, one per (partition rule × seed) combination, holding the raw
+outputs every table in the paper is computed from:
+
+    results/group_s42  group_s1  group_s2  group_s3     session-level partition
+    results/image_s42  image_s1  image_s2  image_s3     image-level partition
+
+Each contains:
+
+| File | Feeds |
+|---|---|
+| `comparison_table.csv` | Tables 4 and 5 of the paper, Table S4 of the supplement |
+| `ablation_results.csv` | Sect. 4.8, Table S6 |
+| `cv_results.csv` | Sect. 4.4, Table S5 |
+| `per_class_metrics.csv` | Table 6 |
+| `robustness_results.csv` | Table 7 |
+| `vietnam_validation.csv` | Tables 8 and 9, before the averaging correction |
+| `mcnemar_results.csv` | the pairwise tests in Sect. 4.8 |
+| `dataset_statistics.csv` | Tables 1 and 2 |
+
+Two notes for anyone recomputing from these files.
+
+`vietnam_validation.csv` holds macro F1 averaged over five classes, including
+pink disease, which has no counterpart in the target data. The paper averages
+over the four mapped classes instead, which is why its Vietnamese figures are
+higher than the raw ones here by a factor of about 1.25. `fix_vietnam_metrics.py`
+applies the correction. This is one of the four protocol decisions the paper
+measures, and the discrepancy between these two files is what it looks like.
+
+The ablation in Sect. 4.8 uses a replication design of two runs per
+configuration per seed. `ablation_results.csv` holds one run per seed; the
+second replicate is not in this release.
+
 ## Citation
 
 ```bibtex
-@article{〔key〕,
-  title   = {What a Reported Accuracy Measures: Capture-Session Leakage and
-             Cross-Country Transfer in Durian Disease Classification},
-  author  = {〔author〕},
-  journal = {〔journal〕},
-  year    = {〔year〕},
-  doi     = {〔doi〕}
+@article{lin2026sampling,
+  title   = {Sampling Unit, Not Image Count: Capture-Session Structure Governs
+             the Accuracy Reported for Image-Based Orchard Disease Diagnosis},
+  author  = {Lin, Ding Shan},
+  journal = {(under review)},
+  year    = {2026}
 }
 ```
 

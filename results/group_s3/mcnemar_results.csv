@@ -1,0 +1,5 @@
+Comparison,Chi2,p-value,Significant (p<0.05)
+Agri-EfficientNet (LFA) vs EfficientNet-B0 (No Attention),4.1667,0.041227,Yes
+Agri-EfficientNet (LFA) vs EfficientNet-B0 + SE,1.5,0.220671,No
+Agri-EfficientNet (LFA) vs EfficientNet-B0 + CBAM,0.1667,0.683091,No
+Agri-EfficientNet (LFA) vs ResNet-50,1.7778,0.182422,No

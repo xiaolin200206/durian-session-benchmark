@@ -1,25 +1,14 @@
-# Data (not public)
-data/
-*.jpg
-*.jpeg
-*.png
-*.bmp
-
-# Checkpoints (upload to Releases separately)
-checkpoints/
-*.pth
-
-# Results
-results/
-
-# Python
 __pycache__/
-*.py[cod]
-*.egg-info/
-.env
-venv/
-.conda/
-
-# OS
+*.pyc
+*.pth
+ckpt*/
+results_disease/
+results_cc_s42/
+summary/
+clean_split*/
+image_split*/
+vietnam/
+*.zip
+*.tar.gz
+run.log
 .DS_Store
-Thumbs.db

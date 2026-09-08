@@ -17,12 +17,13 @@ url: https://github.com/xiaolin200206/durian-session-benchmark
 abstract: >-
   Training, evaluation and audit code for a durian disease dataset
   collected in Peninsular Malaysia. The 560 images resolve into 73
-  independent capture sessions; an image-level random split places
-  79.6% of images in sessions that straddle the train-test boundary
-  and inflates macro F1 by 12.2 points on average across nine
-  architectures. This repository contains the partitioning utilities
-  that avoid that, and a script for each of the four protocol
-  decisions the accompanying paper measures.
+  reconstructed capture sessions, the finest recoverable grouping
+  unit. Under an image-level random split 96.7% of test images belong
+  to a session that also appears in training, and macro F1 is
+  inflated by 12.2 points on average across nine architectures. This
+  repository contains the partitioning utilities that avoid that, and
+  a script for each of the four protocol decisions the accompanying
+  paper measures.
 keywords:
   - data leakage
   - grouped cross-validation
@@ -30,9 +31,11 @@ keywords:
   - plant disease classification
   - reproducibility
   - benchmark
+  - sampling design
+  - pseudoreplication
 license: MIT
-version: 1.0.0
-date-released: '2026-08-30'
+version: 2.1.0
+date-released: '2026-09-08'
 references:
   - type: dataset
     title: >-

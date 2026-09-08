@@ -1,0 +1,7 @@
+﻿Class,Type,Train,Val,Test,Total,Cross_Country
+Algal,Disease,129,16,17,162,Yes
+Leaf_rot,Disease,122,15,16,153,Yes
+Phomopsis,Disease,125,15,17,157,Yes
+Pink_disease,Disease,8,1,1,10,Yes
+Root_disease,Disease,62,7,9,78,Yes
+TOTAL,,446,54,60,560,

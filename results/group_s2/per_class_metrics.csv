@@ -1,0 +1,6 @@
+﻿Class,Type,Precision,Recall,F1,Support,Cross_Country
+Algal,Disease,72.7,50.0,59.3,16,Yes
+Leaf_rot,Disease,63.6,93.3,75.7,15,Yes
+Phomopsis,Disease,100.0,93.3,96.6,15,Yes
+Pink_disease,Disease,100.0,50.0,66.7,2,Yes
+Root_disease,Disease,100.0,100.0,100.0,8,Yes

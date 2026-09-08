@@ -1,0 +1,5 @@
+Model,Accuracy (%),Precision (%),Recall (%),Macro F1 (%),Size(MB),CPU(ms)
+EfficientNet-B0 (No Attention),82.1,90.3,78.7,80.8,15.6,
+EfficientNet-B0 + SE,73.2,84.4,72.4,72.0,16.38,
+EfficientNet-B0 + CBAM,71.4,80.0,79.9,74.9,16.38,
+Agri-EfficientNet + LFA (Ours),76.8,87.8,74.9,76.0,15.6,

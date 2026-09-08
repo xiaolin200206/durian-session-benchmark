@@ -1,0 +1,19 @@
+Model,Perturbation,Macro F1 (%)
+Agri-EfficientNet (LFA),Clean (Baseline),75.0
+Agri-EfficientNet (LFA),Gaussian Noise,34.1
+Agri-EfficientNet (LFA),Low Brightness,78.6
+Agri-EfficientNet (LFA),High Brightness,71.9
+Agri-EfficientNet (LFA),Motion Blur,67.4
+Agri-EfficientNet (LFA),Occlusion (30%),74.0
+ResNet-50 (Baseline),Clean (Baseline),74.2
+ResNet-50 (Baseline),Gaussian Noise,79.6
+ResNet-50 (Baseline),Low Brightness,76.3
+ResNet-50 (Baseline),High Brightness,57.1
+ResNet-50 (Baseline),Motion Blur,72.9
+ResNet-50 (Baseline),Occlusion (30%),86.0
+EfficientNet-B0 (No LFA),Clean (Baseline),72.0
+EfficientNet-B0 (No LFA),Gaussian Noise,18.3
+EfficientNet-B0 (No LFA),Low Brightness,82.9
+EfficientNet-B0 (No LFA),High Brightness,62.2
+EfficientNet-B0 (No LFA),Motion Blur,61.8
+EfficientNet-B0 (No LFA),Occlusion (30%),68.7

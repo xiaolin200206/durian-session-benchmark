@@ -1,0 +1,11 @@
+Model,Accuracy (%),Precision (%),Recall (%),Macro F1 (%)
+EfficientNetV2-S,44.1,39.7,33.4,29.5
+ConvNeXt-Tiny,54.7,31.9,36.8,28.8
+ResNet-101,43.1,30.2,31.4,24.9
+ResNet-50,44.7,22.7,31.2,24.6
+VGG-16,37.2,24.9,30.1,24.4
+Agri-EfficientNet (Ours),32.8,30.9,25.3,21.5
+MobileNetV2,31.6,20.4,24.3,21.0
+MobileNetV3-Large,33.4,16.5,24.5,18.0
+EfficientNet-B0 (No LFA),25.9,17.8,20.3,16.0
+ShuffleNetV2-1.0x,1.6,4.5,1.6,2.4
