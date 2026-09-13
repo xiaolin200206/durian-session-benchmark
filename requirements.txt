@@ -15,3 +15,7 @@ statsmodels>=0.13
 
 # Progress
 tqdm>=4.64
+
+# Optional: only for `extract_features.py --backend timm`.
+# DINOv2 loads through torch.hub and needs no extra package.
+# timm>=0.9

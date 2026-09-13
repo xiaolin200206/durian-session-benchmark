@@ -1,41 +1,57 @@
 cff-version: 1.2.0
 title: >-
-  Session-level evaluation protocol and audit tools for the durian
-  disease benchmark
+  Capture-session evaluation protocol and recoverability-audit tools
+  for the durian disease benchmark
 message: >-
   If you use this software or the accompanying dataset, please cite
-  both. The dataset DOI below is the one to cite for the images and
-  the capture-session identifiers.
+  both, and group your evaluation by the session column. The dataset
+  DOI below is the one to cite for the images and the capture-session
+  identifiers.
 type: software
 authors:
   - family-names: Lin
     given-names: Ding Shan
     orcid: https://orcid.org/0009-0009-6031-8479
     affiliation: UCSI University
+    email: 1002475487@ucsiuniversity.edu.my
 repository-code: https://github.com/xiaolin200206/durian-session-benchmark
 url: https://github.com/xiaolin200206/durian-session-benchmark
 abstract: >-
   Training, evaluation and audit code for a durian disease dataset
   collected in Peninsular Malaysia. The 560 images resolve into 73
-  reconstructed capture sessions, the finest recoverable grouping
-  unit. Under an image-level random split 96.7% of test images belong
-  to a session that also appears in training, and macro F1 is
-  inflated by 12.2 points on average across nine architectures. This
-  repository contains the partitioning utilities that avoid that, and
-  a script for each of the four protocol decisions the accompanying
-  paper measures.
+  independent capture sessions; an image-level random split places
+  79.6% of images in sessions that straddle the train-test boundary,
+  leaves 96.7% of test images sharing a session with training, and
+  inflates macro F1 by 12.2 points on average across nine
+  architectures. The repository contains the partitioning utilities
+  that avoid that, a script for each of the five protocol decisions
+  the accompanying paper measures, and the calibration tooling behind
+  its other result: that the content-based methods in common use do
+  not recover capture structure from released images. On identical
+  simulated image-level partitions, a near-duplicate audit of the kind
+  conventionally reported alongside dataset releases flags 4.6% of
+  test images where the reference grouping flags 93.9%; the two are
+  reported side by side and never divided into one another, because a
+  proxy that over-merges flags images the reference does not.
+  Self-supervised features recover more but reach no threshold at
+  which pair precision and recall are usable together. The claim is
+  bounded to those representations, to single-linkage clustering, and
+  to recovery rather than to any weaker notion of protective grouping.
+  The calibration scripts run unchanged on any directory of
+  class-organised images, including camera-trap and citizen-science
+  collections.
 keywords:
   - data leakage
   - grouped cross-validation
   - capture session
+  - pseudoreplication
+  - field image data
   - plant disease classification
   - reproducibility
   - benchmark
-  - sampling design
-  - pseudoreplication
 license: MIT
-version: 2.2.0
-date-released: '2026-09-08'
+version: 2.1.0
+date-released: '2026-09-12'
 references:
   - type: dataset
     title: >-
@@ -50,3 +66,16 @@ references:
     year: 2026
     publisher:
       name: Zenodo
+preferred-citation:
+  type: article
+  title: >-
+    Capture sessions, not images: the sampling unit governs reported
+    accuracy in field image data, and content-based auditing does not
+    recover it
+  authors:
+    - family-names: Lin
+      given-names: Ding Shan
+      orcid: https://orcid.org/0009-0009-6031-8479
+  journal: Ecological Informatics
+  year: 2026
+  doi: '10.XXXX/XXXXXX'
